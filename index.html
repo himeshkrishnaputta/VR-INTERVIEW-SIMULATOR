@@ -1,0 +1,2819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>VR Interview Simulator | Confidence Building for Meta Quest & Desktop</title>
+  <meta name="description" content="An immersive 3D Virtual Reality interview simulation designed to help users practice job interviews, manage nervousness, and build confidence in a realistic corporate environment.">
+
+  <!-- A-Frame VR Library -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+  <!-- Google Fonts for sleek UI typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-glass: rgba(15, 23, 42, 0.85);
+      --bg-glass-card: rgba(30, 41, 59, 0.82);
+      --border-glass: rgba(255, 255, 255, 0.12);
+      --accent-blue: #38bdf8;
+      --accent-cyan: #06b6d4;
+      --accent-indigo: #6366f1;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #090d16;
+      color: var(--text-primary);
+    }
+
+    /* Modern 2D Desktop / Companion Overlay */
+    #desktop-hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Top Navigation / Status Bar */
+    .hud-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: auto;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand-pill {
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 9999px;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .brand-logo-dot {
+      width: 12px;
+      height: 12px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent-blue);
+      animation: pulse-dot 2.5s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0.8; }
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      background: linear-gradient(90deg, #ffffff, var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-mode {
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .hud-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hud-btn {
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glass);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .hud-btn:hover {
+      background: rgba(51, 65, 85, 0.9);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .hud-btn:active {
+      transform: translateY(0);
+    }
+
+    .hud-btn.primary {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      border-color: rgba(96, 165, 250, 0.5);
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    }
+
+    .hud-btn.primary:hover {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+    }
+
+    .hud-btn.emerald {
+      background: linear-gradient(135deg, #059669, #10b981);
+      border-color: rgba(52, 211, 153, 0.4);
+    }
+
+    /* Bottom Live Companion Dock */
+    .hud-bottom-bar {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 16px;
+      pointer-events: auto;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .dock-card {
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-glass);
+      border-radius: 18px;
+      padding: 16px 22px;
+      box-shadow: var(--shadow-soft);
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+
+    .dock-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dock-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mic-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: rgba(100, 116, 139, 0.2);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      color: var(--text-secondary);
+    }
+
+    .mic-indicator.listening {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    .mic-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .mic-indicator.listening .mic-pulse-dot {
+      animation: pulse-dot 1.2s infinite;
+    }
+
+    .question-prompt-text {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.45;
+    }
+
+    .transcript-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13.5px;
+      color: #e2e8f0;
+      min-height: 44px;
+      max-height: 90px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+
+    .transcript-box em {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .dock-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .dock-controls .hud-btn {
+      flex: 1;
+      justify-content: center;
+      padding: 10px 16px;
+      font-size: 13px;
+    }
+
+    /* Modal Dialogs (Breathing, Settings, Welcome, Summary) */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(5, 8, 18, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 640px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
+      position: relative;
+      transform: scale(0.95);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.active .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .modal-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: #94a3b8;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.2s;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    /* Box Breathing Tool UI */
+    .breathing-box-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 20px 0;
+    }
+
+    .breathing-circle-wrapper {
+      position: relative;
+      width: 190px;
+      height: 190px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .breathing-outer-ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2px dashed rgba(56, 189, 248, 0.35);
+      animation: rotate-ring 20s linear infinite;
+    }
+
+    @keyframes rotate-ring {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .breathing-core-circle {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--accent-blue) 0%, rgba(99, 102, 241, 0.8) 100%);
+      box-shadow: 0 0 35px var(--accent-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 26px;
+      font-weight: 700;
+      transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .breathing-state-label {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .breathing-hint {
+      text-align: center;
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      max-width: 440px;
+      line-height: 1.5;
+    }
+
+    /* Config / Settings Grid */
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 600px) {
+      .config-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .config-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .config-card:hover {
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(30, 41, 59, 0.85);
+      transform: translateY(-2px);
+    }
+
+    .config-card.selected {
+      border-color: var(--accent-blue);
+      background: rgba(37, 99, 235, 0.15);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+    }
+
+    .config-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .config-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .config-card-desc {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* Scorecard & Summary Display */
+    .scorecard-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .metric-box {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-top: 4px;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .feedback-advice-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .feedback-advice-item {
+      background: rgba(30, 41, 59, 0.45);
+      border-left: 3px solid var(--accent-emerald);
+      padding: 12px 14px;
+      border-radius: 0 10px 10px 0;
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .disclaimer-banner {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 11.5px;
+      color: #fde68a;
+      line-height: 1.45;
+    }
+
+    /* VR Seated Height & Teleport Control Badge */
+    .locomotion-pill {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glass);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-secondary);
+      z-index: 15;
+      pointer-events: auto;
+    }
+
+    /* Fallback Text Answer Input for Desktop testing */
+    .text-input-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .text-input-row input {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .text-input-row input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+    }
+
+    /* VR Notification Toast */
+    #vr-toast {
+      position: absolute;
+      top: 90px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--accent-blue);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #vr-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* Hide HUD in immersive VR if desired, but keep accessible */
+    .a-enter-vr {
+      z-index: 999999 !important;
+    }
+  </style>
+
+  <script>
+    // ==========================================
+    // PROCEDURAL TEXTURE GENERATORS (CANVAS-BASED)
+    // Ensures 100% offline, zero-network, high-res materials
+    // ==========================================
+
+    function createWoodTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      // Base warm walnut wood
+      ctx.fillStyle = '#2c1e18';
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Wood grain lines
+      ctx.fillStyle = '#3d2b22';
+      for (let i = 0; i < 512; i += 4) {
+        if (Math.random() > 0.4) {
+          ctx.fillRect(0, i, 512, 1 + Math.random() * 3);
+        }
+      }
+
+      // Soft grain wave variations
+      ctx.fillStyle = 'rgba(20, 12, 8, 0.25)';
+      for (let i = 0; i < 20; i++) {
+        ctx.beginPath();
+        const y = Math.random() * 512;
+        ctx.ellipse(256, y, 300, 30 + Math.random() * 40, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      return canvas.toDataURL();
+    }
+
+    function createAcousticWallTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      // Dark acoustic felt background
+      ctx.fillStyle = '#181b22';
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Vertical oak acoustic slats
+      const slatWidth = 24;
+      const gap = 16;
+      for (let x = 8; x < 512; x += (slatWidth + gap)) {
+        ctx.fillStyle = '#8a6240';
+        ctx.fillRect(x, 0, slatWidth, 512);
+
+        // Highlight and shadow for 3D depth
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.fillRect(x, 0, 3, 512);
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(x + slatWidth - 3, 0, 3, 512);
+      }
+
+      return canvas.toDataURL();
+    }
+
+    function createCarpetTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      // Modern corporate slate grey textured carpet
+      ctx.fillStyle = '#1e2530';
+      ctx.fillRect(0, 0, 256, 256);
+
+      // Micro weave noise
+      for (let x = 0; x < 256; x += 4) {
+        for (let y = 0; y < 256; y += 4) {
+          const shade = Math.floor(25 + Math.random() * 20);
+          ctx.fillStyle = `rgb(${shade}, ${shade + 6}, ${shade + 16})`;
+          ctx.fillRect(x, y, 3, 3);
+        }
+      }
+
+      return canvas.toDataURL();
+    }
+
+    function createSkylineTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      // Modern daytime daylight sky gradient
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, 512);
+      skyGrad.addColorStop(0, '#0284c7');
+      skyGrad.addColorStop(0.5, '#7dd3fc');
+      skyGrad.addColorStop(0.85, '#e0f2fe');
+      skyGrad.addColorStop(1, '#bae6fd');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, 1024, 512);
+
+      // Distant horizon haze
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillRect(0, 340, 1024, 100);
+
+      // Layer 1: Distant subtle skyscrapers
+      ctx.fillStyle = 'rgba(125, 170, 205, 0.45)';
+      for (let x = 0; x < 1024; x += 40 + Math.random() * 30) {
+        const w = 30 + Math.random() * 45;
+        const h = 120 + Math.random() * 180;
+        ctx.fillRect(x, 400 - h, w, h);
+      }
+
+      // Layer 2: Mid-ground glass corporate skyscrapers
+      for (let x = 10; x < 1024; x += 35 + Math.random() * 25) {
+        const w = 28 + Math.random() * 40;
+        const h = 160 + Math.random() * 220;
+        const y = 440 - h;
+
+        ctx.fillStyle = '#33506d';
+        ctx.fillRect(x, y, w, h);
+
+        // Tower antenna
+        if (Math.random() > 0.6) {
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(x + w / 2 - 1, y - 25, 2, 25);
+        }
+
+        // Window grid reflection
+        ctx.fillStyle = 'rgba(224, 242, 254, 0.5)';
+        for (let wx = x + 4; wx < x + w - 4; wx += 6) {
+          for (let wy = y + 8; wy < 430; wy += 9) {
+            if (Math.random() > 0.3) {
+              ctx.fillRect(wx, wy, 4, 5);
+            }
+          }
+        }
+      }
+
+      return canvas.toDataURL();
+    }
+
+    function createWhiteboardTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      // Clean porcelain whiteboard
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, 1024, 512);
+
+      // Subtle metallic border
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 12;
+      ctx.strokeRect(6, 6, 1012, 500);
+
+      // Header: STAR Method
+      ctx.fillStyle = '#1e3a8a';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.fillText('STAR INTERVIEW FRAMEWORK', 50, 70);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '20px sans-serif';
+      ctx.fillText('Structure high-impact answers with clarity & confidence', 50, 105);
+
+      // 4 Pillars of STAR
+      const pillars = [
+        { label: 'S - SITUATION', desc: 'Set the context & specific challenge', color: '#2563eb' },
+        { label: 'T - TASK', desc: 'Your exact role & core responsibility', color: '#0891b2' },
+        { label: 'A - ACTION', desc: 'Concrete steps, decisions & teamwork', color: '#059669' },
+        { label: 'R - RESULT', desc: 'Measurable impact, metrics & lessons', color: '#d97706' }
+      ];
+
+      pillars.forEach((p, idx) => {
+        const x = 50 + idx * 230;
+        const y = 140;
+
+        ctx.fillStyle = p.color;
+        ctx.fillRect(x, y, 215, 6);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(p.label, x, y + 36);
+
+        ctx.fillStyle = '#334155';
+        ctx.font = '16px sans-serif';
+        const words = p.desc.split(' ');
+        ctx.fillText(words.slice(0, 3).join(' '), x, y + 68);
+        ctx.fillText(words.slice(3).join(' '), x, y + 92);
+      });
+
+      // Quick Confidence Tips Box
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(50, 280, 924, 180);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('KEY CONFIDENCE & DELIVERY REMINDERS', 75, 325);
+
+      ctx.font = '19px sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText('• Breathe steadily: A 2-second pause before answering shows composure, not hesitation.', 75, 365);
+      ctx.fillText('• Quantify impact: Use numbers, percentages, or team milestones where possible.', 75, 400);
+      ctx.fillText('• Be authentic: Discuss challenges honestly alongside what you learned and adapted.', 75, 435);
+
+      return canvas.toDataURL();
+    }
+
+    // ==========================================
+    // AUDIO SYNTHESIS ENGINE (ZERO ASSET DEPENDENCY)
+    // ==========================================
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playHover() {
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.05);
+      }
+
+      playClick() {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(880, now + 0.06);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+
+      playTeleport() {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(550, now + 0.22);
+        gain.gain.setValueAtTime(0.09, now);
+        gain.gain.linearRampToValueAtTime(0.001, now + 0.22);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      }
+
+      playCalmTone() {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [261.63, 329.63, 392.00, 523.25].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+          gain.gain.setValueAtTime(0.04, now + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + 1.2);
+        });
+      }
+
+      playBreathingChime() {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(392, now);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 2.5);
+      }
+    }
+
+    const audio = new SoundEngine();
+
+    // ==========================================
+    // INTERVIEW QUESTION BANK
+    // Comprehensive questions with difficulty and personality settings
+    // ==========================================
+    const QUESTION_BANK = {
+      general: [
+        {
+          id: 'g1',
+          question: "Welcome! Could you please introduce yourself and highlight key moments from your professional journey?",
+          tips: "Keep it to 90 seconds. Focus on your recent role, core strengths, and what brought you to this interview.",
+          friendlyIntro: "It's so wonderful to meet you today! Let's start with a relaxed introduction.",
+          formalIntro: "Good day. To begin this evaluation, please present a structured summary of your professional background."
+        },
+        {
+          id: 'g2',
+          question: "What do you consider your greatest professional strength, and what is one area you are actively working to improve?",
+          tips: "Pick a genuine development area with concrete steps you're taking to improve, rather than a fake flaw.",
+          friendlyIntro: "Great! Self-awareness is so valuable in any collaborative environment.",
+          formalIntro: "Thank you. Let us now examine your self-appraisal capabilities."
+        },
+        {
+          id: 'g3',
+          question: "Why does this opportunity excite you, and how does it align with your three-to-five year aspirations?",
+          tips: "Connect your personal values and learning goals directly to the team's mission.",
+          friendlyIntro: "We love passionate team members! Tell me what genuinely sparks your curiosity here.",
+          formalIntro: "Understood. Please align your medium-term career roadmap with our organization's strategic objectives."
+        },
+        {
+          id: 'g4',
+          question: "How do you maintain focus, composure, and work-life balance during high-stakes or intense project cycles?",
+          tips: "Demonstrate emotional maturity, structured prioritization, and proactive communication.",
+          friendlyIntro: "Well-being is central to our culture. How do you recharge and stay centered?",
+          formalIntro: "High-performance roles require resilience under pressure. Detail your stress management methodology."
+        }
+      ],
+      technical: [
+        {
+          id: 't1',
+          question: "Walk me through a technically complex problem you solved recently. What was your systematic thought process?",
+          tips: "Describe the symptoms, your hypothesis, how you isolated root causes, and the final solution.",
+          friendlyIntro: "I love hearing about technical challenges! Don't worry about being too high level—dive into details.",
+          formalIntro: "Please demonstrate your analytical and diagnostic depth through a concrete engineering incident."
+        },
+        {
+          id: 't2',
+          question: "How do you evaluate and approach adopting a new framework, language, or architectural paradigm on an existing project?",
+          tips: "Weigh developer ergonomics, performance, security, ecosystem maturity, and maintenance cost.",
+          friendlyIntro: "Technology moves so rapidly! How do you decide what's worth adopting?",
+          formalIntro: "Explain your governance framework for introducing novel dependencies or architectural patterns."
+        },
+        {
+          id: 't3',
+          question: "Describe a scenario where you had to make a tough technical compromise between speed-to-market and long-term code quality.",
+          tips: "Acknowledge technical debt as a deliberate, tracked business choice rather than an accident.",
+          friendlyIntro: "We've all faced tight deadlines! How did you strike the right balance?",
+          formalIntro: "Evaluate a deliberate trade-off you executed regarding technical debt versus delivery velocity."
+        },
+        {
+          id: 't4',
+          question: "What practices do you champion to ensure team-wide code reliability, automated testing, and seamless continuous delivery?",
+          tips: "Mention unit/integration tests, peer code reviews, CI/CD pipelines, and observability.",
+          friendlyIntro: "Awesome. How do you help the whole team ship dependable, high-quality software with confidence?",
+          formalIntro: "Detail your baseline standards for automated verification, CI/CD pipelines, and post-deployment monitoring."
+        }
+      ],
+      behavioral: [
+        {
+          id: 'b1',
+          question: "Tell me about a time you experienced a significant disagreement with a teammate or stakeholder. How was it resolved?",
+          tips: "Use STAR: Focus on active listening, objective data, empathy, and finding common ground.",
+          friendlyIntro: "Disagreements are natural when people care deeply about the work. How did you navigate that?",
+          formalIntro: "Explain your conflict resolution strategy when dealing with divergent stakeholder priorities."
+        },
+        {
+          id: 'b2',
+          question: "Can you share an experience where an initiative or project did not go according to plan? What were your key takeaways?",
+          tips: "Own the outcome without defensiveness. Highlight the post-mortem, pivot, and lasting lessons.",
+          friendlyIntro: "Setbacks happen to everyone. What matters most is how we learn and adapt. Tell me about one.",
+          formalIntro: "Analyze a project failure under your stewardship, your remediation steps, and retrospective outcomes."
+        },
+        {
+          id: 'b3',
+          question: "Describe a situation where you had to juggle multiple competing high-priority deadlines with constrained resources.",
+          tips: "Discuss triage, stakeholder expectation management, and ruthless prioritization.",
+          friendlyIntro: "Things can get busy! How do you prioritize and keep your cool when everything feels urgent?",
+          formalIntro: "Detail your resource allocation and expectation management protocol under severe schedule compression."
+        },
+        {
+          id: 'b4',
+          question: "Give an example of how you delivered difficult or constructive feedback to a peer, and what the outcome was.",
+          tips: "Highlight timing, empathy, actionable specificity, and psychological safety.",
+          friendlyIntro: "Giving honest feedback takes real courage. How did you approach that conversation?",
+          formalIntro: "Describe your methodology for communicating critical performance feedback to team members."
+        }
+      ],
+      executive: [
+        {
+          id: 'e1',
+          question: "How do you cultivate psychological safety and an inclusive, collaborative culture within a distributed or cross-functional team?",
+          tips: "Mention open vulnerability, blameless retrospectives, and equitable sharing of ideas.",
+          friendlyIntro: "Great teams are built on trust and inclusion. How do you foster that warmth every day?",
+          formalIntro: "Articulate your leadership philosophy regarding psychological safety, equity, and team alignment."
+        },
+        {
+          id: 'e2',
+          question: "How do you translate complex technical concepts or architectural choices into clear business value for executive leadership?",
+          tips: "Translate latency, reliability, or refactoring into revenue, risk mitigation, and velocity.",
+          friendlyIntro: "Communication is such an art! How do you connect the dots for non-technical partners?",
+          formalIntro: "Demonstrate your cross-functional translation skills when reporting technical risk to board stakeholders."
+        },
+        {
+          id: 'e3',
+          question: "What questions do you have for me regarding our strategic vision, team dynamics, or technology roadmap?",
+          tips: "Always prepare 2-3 thoughtful questions showing curiosity about culture, growth, and upcoming challenges.",
+          friendlyIntro: "Now it's your turn! I'd love to answer any questions on your mind about our team or culture.",
+          formalIntro: "The floor is now yours. What inquiries do you have concerning our strategic imperatives?"
+        }
+      ]
+    };
+
+    // ==========================================
+    // INTERVIEW STATE MANAGER
+    // ==========================================
+    const InterviewState = {
+      category: 'general',
+      difficulty: 'friendly', // 'friendly', 'neutral', 'formal'
+      currentIndex: 0,
+      isActive: false,
+      isPaused: false,
+      isSpeaking: false,
+      isListening: false,
+      startTime: null,
+      questionStartTime: null,
+      responses: [], // { question, transcript, duration, wpm, fillerCount }
+      speechRecognition: null,
+      currentTranscript: '',
+      isSeated: true,
+      currentCameraSpot: 'interview' // 'reception', 'lounge', 'interview'
+    };
+
+    // Filler word regex list
+    const FILLER_WORDS = ['um', 'uh', 'like', 'actually', 'basically', 'you know', 'sort of', 'kind of', 'literally', 'so yeah'];
+  </script>
+
+  <!-- ==========================================
+       CUSTOM A-FRAME COMPONENTS
+       ========================================== -->
+  <script>
+    // 1. Digital Wall Clock Component
+    AFRAME.registerComponent('digital-clock', {
+      init: function () {
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = 512;
+        this.canvas.height = 192;
+        this.ctx = this.canvas.getContext('2d');
+        this.texture = new THREE.CanvasTexture(this.canvas);
+
+        const material = new THREE.MeshBasicMaterial({ map: this.texture, transparent: true });
+        const mesh = this.el.getObject3D('mesh');
+        if (mesh) {
+          mesh.material = material;
+        } else {
+          this.el.addEventListener('loaded', () => {
+            this.el.getObject3D('mesh').material = material;
+          });
+        }
+
+        this.updateClock();
+        this.timer = setInterval(() => this.updateClock(), 1000);
+      },
+      updateClock: function () {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+
+        this.ctx.fillStyle = '#0f172a';
+        this.ctx.fillRect(0, 0, 512, 192);
+
+        // Frame
+        this.ctx.strokeStyle = '#38bdf8';
+        this.ctx.lineWidth = 8;
+        this.ctx.strokeRect(6, 6, 500, 180);
+
+        // Subtitle
+        this.ctx.fillStyle = '#64748b';
+        this.ctx.font = 'bold 22px sans-serif';
+        this.ctx.fillText('OFFICE LOCAL TIME', 32, 45);
+
+        // Time digits
+        this.ctx.fillStyle = '#38bdf8';
+        this.ctx.font = 'bold 78px monospace';
+        this.ctx.fillText(`${hrs}:${mins}:${secs}`, 32, 130);
+
+        // Status badge
+        this.ctx.fillStyle = '#10b981';
+        this.ctx.font = 'bold 20px sans-serif';
+        this.ctx.fillText('● LIVE VR SESSION', 32, 168);
+
+        this.texture.needsUpdate = true;
+      },
+      remove: function () {
+        if (this.timer) clearInterval(this.timer);
+      }
+    });
+
+    // 2. Interactive Button Component for VR Laser and Mouse Interaction
+    AFRAME.registerComponent('interactive-button', {
+      schema: {
+        title: { type: 'string', default: 'Button' },
+        action: { type: 'string', default: '' },
+        baseColor: { type: 'string', default: '#1e293b' },
+        hoverColor: { type: 'string', default: '#2563eb' },
+        activeColor: { type: 'string', default: '#3b82f6' }
+      },
+      init: function () {
+        const el = this.el;
+        el.classList.add('clickable');
+
+        // Hover events
+        el.addEventListener('mouseenter', () => {
+          el.setAttribute('material', 'color', this.data.hoverColor);
+          el.setAttribute('scale', '1.05 1.05 1.05');
+          audio.playHover();
+        });
+
+        el.addEventListener('mouseleave', () => {
+          el.setAttribute('material', 'color', this.data.baseColor);
+          el.setAttribute('scale', '1 1 1');
+        });
+
+        // Click / Trigger event
+        el.addEventListener('click', () => {
+          el.setAttribute('material', 'color', this.data.activeColor);
+          audio.playClick();
+          setTimeout(() => {
+            el.setAttribute('material', 'color', this.data.baseColor);
+          }, 150);
+
+          if (this.data.action) {
+            window.handleVRAction(this.data.action);
+          }
+        });
+      }
+    });
+
+    // 3. Teleport Hotspot Component
+    AFRAME.registerComponent('teleport-pad', {
+      schema: {
+        targetPosition: { type: 'vec3' },
+        locationName: { type: 'string', default: 'Area' }
+      },
+      init: function () {
+        const el = this.el;
+        el.classList.add('clickable');
+        el.classList.add('teleport-pad');
+
+        // Hover ring expansion
+        el.addEventListener('mouseenter', () => {
+          const ring = el.querySelector('.pad-ring');
+          if (ring) {
+            ring.setAttribute('scale', '1.2 1.2 1.2');
+            ring.setAttribute('material', 'color', '#38bdf8');
+          }
+          audio.playHover();
+        });
+
+        el.addEventListener('mouseleave', () => {
+          const ring = el.querySelector('.pad-ring');
+          if (ring) {
+            ring.setAttribute('scale', '1 1 1');
+            ring.setAttribute('material', 'color', '#0ea5e9');
+          }
+        });
+
+        el.addEventListener('click', () => {
+          audio.playTeleport();
+          window.teleportRig(this.data.targetPosition);
+          window.showVRToast(`Teleported to ${this.data.locationName}`);
+        });
+      }
+    });
+
+    // 4. Procedural Virtual Interviewer Avatar Controller
+    AFRAME.registerComponent('interviewer-avatar', {
+      schema: {
+        personality: { type: 'string', default: 'friendly' }
+      },
+      init: function () {
+        this.head = this.el.querySelector('#interviewer-head');
+        this.torso = this.el.querySelector('#interviewer-torso');
+        this.mouth = this.el.querySelector('#interviewer-mouth');
+        this.rightArm = this.el.querySelector('#interviewer-right-arm');
+        this.leftEye = this.el.querySelector('#interviewer-eye-left');
+        this.rightEye = this.el.querySelector('#interviewer-eye-right');
+
+        this.time = 0;
+        this.blinkTimer = 0;
+        this.isSpeaking = false;
+        this.nodAmount = 0;
+      },
+      tick: function (time, deltaTime) {
+        const dt = deltaTime / 1000;
+        this.time += dt;
+
+        // 1. Idle Torso Breathing (gentle sinusoidal vertical oscillation)
+        if (this.torso) {
+          const breath = Math.sin(this.time * 2.2) * 0.012;
+          this.torso.object3D.position.y = 0.55 + breath;
+          this.torso.object3D.scale.y = 1 + breath * 0.8;
+        }
+
+        // 2. Idle Head Micro-Motion (natural slight tilt & sway)
+        if (this.head) {
+          const headSway = Math.sin(this.time * 0.8) * 0.03;
+          const headTilt = Math.cos(this.time * 0.6) * 0.02;
+
+          let nodOffset = 0;
+          if (this.nodAmount > 0) {
+            nodOffset = Math.sin(this.time * 10) * 0.08 * (this.nodAmount);
+            this.nodAmount -= dt * 1.5;
+            if (this.nodAmount < 0) this.nodAmount = 0;
+          }
+
+          this.head.object3D.rotation.y = headSway;
+          this.head.object3D.rotation.x = headTilt + nodOffset;
+          this.head.object3D.position.y = 1.12 + Math.sin(this.time * 2.2) * 0.01;
+        }
+
+        // 3. Procedural Eye Blinking (blinks naturally every 3-5 seconds)
+        this.blinkTimer += dt;
+        if (this.blinkTimer > 3.8) {
+          if (this.leftEye && this.rightEye) {
+            this.leftEye.object3D.scale.y = 0.1;
+            this.rightEye.object3D.scale.y = 0.1;
+          }
+          if (this.blinkTimer > 4.0) {
+            if (this.leftEye && this.rightEye) {
+              this.leftEye.object3D.scale.y = 1;
+              this.rightEye.object3D.scale.y = 1;
+            }
+            this.blinkTimer = Math.random() * 0.8;
+          }
+        }
+
+        // 4. Speaking Mouth Animation (moves rhythmic jaw when speaking)
+        if (this.mouth) {
+          if (this.isSpeaking) {
+            const mouthOpen = 0.015 + Math.abs(Math.sin(this.time * 14)) * 0.03;
+            this.mouth.object3D.scale.y = mouthOpen / 0.02;
+            this.mouth.object3D.position.y = -0.06 - mouthOpen * 0.3;
+          } else {
+            this.mouth.object3D.scale.y = 1;
+            this.mouth.object3D.position.y = -0.06;
+          }
+        }
+
+        // 5. Idle Note-Taking gesture on desk
+        if (this.rightArm && !this.isSpeaking) {
+          this.rightArm.object3D.rotation.z = 0.1 + Math.sin(this.time * 1.5) * 0.04;
+        }
+      },
+      triggerNod: function () {
+        this.nodAmount = 1.0;
+      },
+      setSpeaking: function (speaking) {
+        this.isSpeaking = speaking;
+      }
+    });
+
+    // 5. In-VR 3D Canvas HUD Panel Component
+    AFRAME.registerComponent('vr-hud-display', {
+      init: function () {
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = 1024;
+        this.canvas.height = 640;
+        this.ctx = this.canvas.getContext('2d');
+        this.texture = new THREE.CanvasTexture(this.canvas);
+
+        const material = new THREE.MeshBasicMaterial({
+          map: this.texture,
+          transparent: true
+        });
+
+        const mesh = this.el.getObject3D('mesh');
+        if (mesh) {
+          mesh.material = material;
+        } else {
+          this.el.addEventListener('loaded', () => {
+            this.el.getObject3D('mesh').material = material;
+          });
+        }
+
+        this.updateHUD();
+      },
+      updateHUD: function () {
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, 1024, 640);
+
+        // Background Glass Panel
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+        roundRect(ctx, 10, 10, 1004, 620, 32, true, false);
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+        ctx.lineWidth = 4;
+        roundRect(ctx, 10, 10, 1004, 620, 32, false, true);
+
+        // Header Bar
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 30px sans-serif';
+        ctx.fillText('VR INTERVIEW SIMULATOR', 45, 65);
+
+        // Difficulty & Category badge
+        const diffLabel = `DIFFICULTY: ${InterviewState.difficulty.toUpperCase()} | CATEGORY: ${InterviewState.category.toUpperCase()}`;
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText(diffLabel, 45, 100);
+
+        // Progress Pill
+        const qList = QUESTION_BANK[InterviewState.category] || QUESTION_BANK.general;
+        const total = qList.length;
+        const currentNum = InterviewState.isActive ? (InterviewState.currentIndex + 1) : 0;
+        const progText = `Question ${currentNum} of ${total}`;
+
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+        roundRect(ctx, 770, 40, 200, 45, 12, true, false);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText(progText, 795, 70);
+
+        // Main Question Display Area
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
+        roundRect(ctx, 45, 125, 934, 180, 20, true, false);
+
+        let qText = "Welcome to your VR Interview practice session. Select 'Start Interview' below to begin.";
+        if (InterviewState.isActive) {
+          const currentQ = qList[InterviewState.currentIndex];
+          if (currentQ) qText = currentQ.question;
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 28px sans-serif';
+        wrapText(ctx, qText, 75, 180, 870, 38);
+
+        // Response Transcript & Microphone Status
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        roundRect(ctx, 45, 325, 934, 150, 16, true, false);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 2;
+        roundRect(ctx, 45, 325, 934, 150, 16, false, true);
+
+        // Mic Status pill
+        if (InterviewState.isListening) {
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(75, 355, 8, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#f87171';
+          ctx.font = 'bold 18px sans-serif';
+          ctx.fillText('LISTENING TO YOUR MIC... (Speak naturally)', 95, 362);
+        } else {
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.arc(75, 355, 8, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#34d399';
+          ctx.font = 'bold 18px sans-serif';
+          ctx.fillText(InterviewState.isActive ? 'MICROPHONE READY — Tap "Start Answering" or speak' : 'STANDBY MODE', 95, 362);
+        }
+
+        // Live transcription text
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = 'italic 22px sans-serif';
+        const displaySpeech = InterviewState.currentTranscript || (InterviewState.isActive ? "Your spoken answer will appear here in real-time..." : "Click 'Start Interview' to begin your confidence journey.");
+        wrapText(ctx, displaySpeech, 75, 405, 870, 32);
+
+        // Confidence Coach Tip Bar at Bottom
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+        roundRect(ctx, 45, 500, 934, 75, 14, true, false);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('★ CONFIDENCE COACH TIP:', 70, 532);
+
+        let tipText = "Take a calm breath before answering. Eye contact with the interviewer and a measured pace convey confidence.";
+        if (InterviewState.isActive) {
+          const currentQ = qList[InterviewState.currentIndex];
+          if (currentQ && currentQ.tips) tipText = currentQ.tips;
+        }
+
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = '17px sans-serif';
+        wrapText(ctx, tipText, 70, 560, 880, 24);
+
+        this.texture.needsUpdate = true;
+      }
+    });
+
+    // Helper functions for Canvas UI drawing
+    function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(' ');
+      let line = '';
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+          ctx.fillText(line, x, y);
+          line = words[n] + ' ';
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, y);
+    }
+  </script>
+</head>
+<body>
+
+  <!-- ==========================================
+       2D DESKTOP / COMPANION HUD
+       Mirrored controls for testing on desktop or viewing during VR
+       ========================================== -->
+  <div id="desktop-hud">
+    <!-- Top HUD Bar -->
+    <header class="hud-top-bar">
+      <div class="brand-pill">
+        <div class="brand-logo-dot"></div>
+        <span class="brand-title">APEX VR INTERVIEW SIMULATOR</span>
+        <span class="badge-mode" id="badge-difficulty">FRIENDLY</span>
+      </div>
+
+      <div class="hud-actions">
+        <button class="hud-btn" id="btn-breathing" onclick="openBreathingModal()">
+          <span>🫁</span> Box Breathing
+        </button>
+        <button class="hud-btn" id="btn-settings" onclick="openSettingsModal()">
+          <span>⚙️</span> Setup & Settings
+        </button>
+        <button class="hud-btn" id="btn-height-toggle" onclick="toggleSeatedHeight()">
+          <span id="height-icon">🪑</span> <span id="height-label">Seated Mode (1.15m)</span>
+        </button>
+        <button class="hud-btn primary" id="btn-toggle-interview" onclick="toggleInterviewSession()">
+          <span id="interview-btn-icon">▶</span> <span id="interview-btn-text">Start Interview</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- VR Toast Notification -->
+    <div id="vr-toast">
+      <span id="toast-icon">ℹ️</span>
+      <span id="toast-msg">Welcome to VR Interview Simulator</span>
+    </div>
+
+    <!-- Locomotion Quick Switcher (Bottom Left) -->
+    <div class="locomotion-pill">
+      <span>📍 Quick Teleport:</span>
+      <button class="hud-btn" style="padding: 4px 10px; font-size: 11px;" onclick="teleportTo('interview')">Interview Desk</button>
+      <button class="hud-btn" style="padding: 4px 10px; font-size: 11px;" onclick="teleportTo('reception')">Reception Desk</button>
+      <button class="hud-btn" style="padding: 4px 10px; font-size: 11px;" onclick="teleportTo('lounge')">Lounge Sofa</button>
+    </div>
+
+    <!-- Bottom Question & Voice Transcription Dock -->
+    <div class="hud-bottom-bar">
+      <div class="dock-card">
+        <div class="dock-header">
+          <div class="dock-title">
+            <span>Current Question</span>
+            <span id="hud-q-category" style="color: var(--accent-blue); font-weight: 600;">[General / HR]</span>
+          </div>
+          <div class="mic-indicator" id="hud-mic-indicator">
+            <div class="mic-pulse-dot"></div>
+            <span id="hud-mic-text">Mic Ready</span>
+          </div>
+        </div>
+
+        <div class="question-prompt-text" id="hud-question-display">
+          Welcome! Press "Start Interview" or walk to the interview chair to begin your session.
+        </div>
+
+        <!-- Real-time Spoken Answer Transcript -->
+        <div class="transcript-box" id="hud-transcript-display">
+          <em>Spoken or typed response will be transcribed here in real time...</em>
+        </div>
+
+        <!-- Text Answer Input (Desktop Fallback) -->
+        <div class="text-input-row" id="text-input-container">
+          <input type="text" id="desktop-text-answer" placeholder="Type an answer here (or speak via microphone), then press Enter..." onkeydown="handleTextAnswerKey(event)">
+          <button class="hud-btn" style="padding: 8px 14px;" onclick="submitTextAnswer()">Submit</button>
+        </div>
+
+        <!-- Controls Row -->
+        <div class="dock-controls">
+          <button class="hud-btn" onclick="repeatCurrentQuestion()">
+            <span>🔄</span> Repeat Question
+          </button>
+          <button class="hud-btn" id="btn-mic-toggle" onclick="toggleMicrophone()">
+            <span>🎙️</span> <span id="mic-toggle-label">Start Answering</span>
+          </button>
+          <button class="hud-btn primary" onclick="nextQuestion()">
+            <span>Next Question</span> <span>➔</span>
+          </button>
+          <button class="hud-btn" onclick="finishInterviewEarly()">
+            <span>📊</span> Complete & Review
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 1: BOX BREATHING GROUNDING TOOL
+       Scientifically proven 4-4-4-4 relaxation technique
+       ========================================== -->
+  <div class="modal-overlay" id="modal-breathing">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Box Breathing Grounding</h2>
+          <p class="modal-subtitle">Lower your heart rate, steady your breathing, and reset nervous tension before your interview.</p>
+        </div>
+        <button class="close-modal-btn" onclick="closeBreathingModal()">&times;</button>
+      </div>
+
+      <div class="breathing-box-container">
+        <div class="breathing-circle-wrapper">
+          <div class="breathing-outer-ring"></div>
+          <div class="breathing-core-circle" id="breathing-bubble">4</div>
+        </div>
+
+        <div class="breathing-state-label" id="breathing-label">GET READY...</div>
+        <p class="breathing-hint" id="breathing-guidance">
+          Follow the expanding and contracting rhythm: Inhale for 4 seconds, Hold for 4 seconds, Exhale for 4 seconds, and Hold empty for 4 seconds.
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="hud-btn" onclick="closeBreathingModal()">Done Breathing</button>
+        <button class="hud-btn primary" onclick="startInterviewFromBreathing()">Proceed to Interview</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 2: INTERVIEW SETUP & SETTINGS
+       ========================================== -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Interview Configuration</h2>
+          <p class="modal-subtitle">Customize difficulty, interviewer personality, and question category.</p>
+        </div>
+        <button class="close-modal-btn" onclick="closeSettingsModal()">&times;</button>
+      </div>
+
+      <div>
+        <h4 style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-blue); margin-bottom: 10px;">Select Difficulty & Personality:</h4>
+        <div class="config-grid">
+          <div class="config-card selected" id="card-diff-friendly" onclick="selectDifficulty('friendly')">
+            <div class="config-card-header">
+              <span class="config-card-title">Level 1: Friendly</span>
+              <span style="font-size: 18px;">🌱</span>
+            </div>
+            <p class="config-card-desc">Warm, welcoming interviewer. Foundational questions, encouraging dialogue, and unlimited preparation time.</p>
+          </div>
+
+          <div class="config-card" id="card-diff-neutral" onclick="selectDifficulty('neutral')">
+            <div class="config-card-header">
+              <span class="config-card-title">Level 2: Intermediate</span>
+              <span style="font-size: 18px;">⚖️</span>
+            </div>
+            <p class="config-card-desc">Standard corporate interview pacing. Balanced behavioral and situational problem-solving questions.</p>
+          </div>
+
+          <div class="config-card" id="card-diff-formal" onclick="selectDifficulty('formal')">
+            <div class="config-card-header">
+              <span class="config-card-title">Level 3: Formal</span>
+              <span style="font-size: 18px;">🎯</span>
+            </div>
+            <p class="config-card-desc">Rigorous executive panel tone. Structured STAR expectations and challenging behavioral scenarios.</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-blue); margin-bottom: 10px;">Question Category:</h4>
+        <div class="config-grid">
+          <div class="config-card selected" id="card-cat-general" onclick="selectCategory('general')">
+            <span class="config-card-title">General & HR</span>
+            <p class="config-card-desc">Introduction, strengths, career vision, resilience, and personal alignment.</p>
+          </div>
+          <div class="config-card" id="card-cat-technical" onclick="selectCategory('technical')">
+            <span class="config-card-title">Technical Skills</span>
+            <p class="config-card-desc">Complex problem solving, architectural trade-offs, and software craft.</p>
+          </div>
+          <div class="config-card" id="card-cat-behavioral" onclick="selectCategory('behavioral')">
+            <span class="config-card-title">Behavioral (STAR)</span>
+            <p class="config-card-desc">Conflict resolution, project setbacks, tight deadlines, and team dynamics.</p>
+          </div>
+          <div class="config-card" id="card-cat-executive" onclick="selectCategory('executive')">
+            <span class="config-card-title">Executive & Culture</span>
+            <p class="config-card-desc">Inclusive leadership, stakeholder translation, and candidate inquiries.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button class="hud-btn primary" onclick="closeSettingsModal()">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 3: PERFORMANCE REVIEW SCORECARD
+       Constructive, encouraging feedback on real session metrics
+       ========================================== -->
+  <div class="modal-overlay" id="modal-summary">
+    <div class="modal-content" style="max-width: 720px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Session Performance Scorecard</h2>
+          <p class="modal-subtitle">Comprehensive reflection and communication metrics from your practice session.</p>
+        </div>
+        <button class="close-modal-btn" onclick="closeSummaryModal()">&times;</button>
+      </div>
+
+      <!-- Core Metrics Row -->
+      <div class="scorecard-metrics">
+        <div class="metric-box">
+          <div class="metric-label">Completed</div>
+          <div class="metric-value" id="summary-completed-count">0 / 4</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Session Time</div>
+          <div class="metric-value" id="summary-duration">0m 0s</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Speaking Pace</div>
+          <div class="metric-value" id="summary-pace">125 WPM</div>
+        </div>
+      </div>
+
+      <!-- Secondary Metrics -->
+      <div class="scorecard-metrics">
+        <div class="metric-box">
+          <div class="metric-label">Words Spoken</div>
+          <div class="metric-value" id="summary-total-words">0</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Filler Words</div>
+          <div class="metric-value" id="summary-fillers">0</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">STAR Structure</div>
+          <div class="metric-value" id="summary-structure">Solid</div>
+        </div>
+      </div>
+
+      <!-- Personalized Suggestions -->
+      <div>
+        <h4 style="font-size: 14px; text-transform: uppercase; color: var(--accent-emerald); margin-bottom: 8px;">Actionable Strengths & Insights:</h4>
+        <ul class="feedback-advice-list" id="summary-advice-list">
+          <li class="feedback-advice-item">You articulated your ideas steadily. Remember that pausing 2 seconds before answering demonstrates composure.</li>
+        </ul>
+      </div>
+
+      <!-- Transparency & Medical Disclaimer -->
+      <div class="disclaimer-banner">
+        <strong>Practice Metric Transparency:</strong> Filler words and speaking pace are computed directly from browser speech recognition transcripts when active. This tool is designed strictly for encouraging practice and building familiarity, not as a psychological or clinical assessment.
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="hud-btn" onclick="teleportTo('reception'); closeSummaryModal();">Explore Office</button>
+        <button class="hud-btn primary" onclick="restartSession()">Practice Again</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       A-FRAME 3D VIRTUAL REALITY SCENE
+       Optimized for Meta Quest 3S standalone VR & Desktop WebGL
+       ========================================== -->
+  <a-scene
+    renderer="antialias: true; colorManagement: true; physicallyCorrectLights: false; highRefreshRate: true;"
+    background="color: #0b1120"
+    fog="type: linear; color: #0b1120; near: 18; far: 45"
+    webxr="optionalFeatures: hit-test, local-floor;"
+    vr-mode-ui="enabled: true">
+
+    <!-- Procedural Texture Assets -->
+    <a-assets>
+      <img id="tex-wood" src="" alt="Wood">
+      <img id="tex-acoustic" src="" alt="Acoustic Wall">
+      <img id="tex-carpet" src="" alt="Carpet">
+      <img id="tex-skyline" src="" alt="Skyline">
+      <img id="tex-whiteboard" src="" alt="Whiteboard">
+    </a-assets>
+
+    <!-- ==========================================
+         CAMERA RIG & META QUEST 3S DUAL CONTROLLERS
+         ========================================== -->
+    <a-entity id="rig" position="5.5 0 0" rotation="0 -90 0">
+      <!-- User Head & Camera -->
+      <a-camera id="head-camera" position="0 1.15 0" look-controls="pointerLockEnabled: false" wasd-controls="acceleration: 15">
+        <!-- Center Gaze Cursor (Fallback for Desktop / Non-controller interactions) -->
+        <a-cursor
+          id="gaze-cursor"
+          position="0 0 -1"
+          geometry="primitive: ring; radiusInner: 0.012; radiusOuter: 0.02"
+          material="color: #38bdf8; shader: flat; opacity: 0.75"
+          raycaster="objects: .clickable, .teleport-pad; interval: 100">
+        </a-cursor>
+      </a-camera>
+
+      <!-- Meta Quest 3S Right Controller (Laser Pointer & Trigger Selection) -->
+      <a-entity
+        id="right-controller"
+        oculus-touch-controls="hand: right"
+        laser-controls="hand: right"
+        raycaster="objects: .clickable, .teleport-pad; lineColor: #38bdf8; lineOpacity: 0.8; far: 15">
+      </a-entity>
+
+      <!-- Meta Quest 3S Left Controller -->
+      <a-entity
+        id="left-controller"
+        oculus-touch-controls="hand: left"
+        laser-controls="hand: left"
+        raycaster="objects: .clickable, .teleport-pad; lineColor: #818cf8; lineOpacity: 0.6; far: 15">
+      </a-entity>
+    </a-entity>
+
+    <!-- ==========================================
+         LIGHTING RIG (SOFT PERFORMANCE-OPTIMIZED)
+         ========================================== -->
+    <a-entity light="type: ambient; color: #cbd5e1; intensity: 0.85;"></a-entity>
+    <!-- Soft Sunlight from large panoramic window -->
+    <a-entity light="type: directional; color: #e0f2fe; intensity: 0.95; castShadow: false" position="8 6 -3"></a-entity>
+    <!-- Warm Interior Office Accent Light -->
+    <a-entity light="type: point; color: #fef08a; intensity: 0.45; distance: 12" position="3.5 3.2 0"></a-entity>
+    <a-entity light="type: point; color: #38bdf8; intensity: 0.35; distance: 10" position="-5 3.2 2"></a-entity>
+
+    <!-- ==========================================
+         ARCHITECTURE: FLOORS, WALLS, CEILINGS
+         ========================================== -->
+
+    <!-- Carpet Floor (Entire Office Suite) -->
+    <a-plane
+      id="office-floor"
+      position="0 0 0"
+      rotation="-90 0 0"
+      width="22"
+      height="16"
+      material="src: #tex-carpet; repeat: 14 10; roughness: 0.9; metalness: 0.05">
+    </a-plane>
+
+    <!-- Office Ceiling with Recessed LED Lights -->
+    <a-plane
+      position="0 3.8 0"
+      rotation="90 0 0"
+      width="22"
+      height="16"
+      material="color: #0f172a; roughness: 0.9">
+    </a-plane>
+
+    <!-- Ceiling LED Light Panels (Soft Glow) -->
+    <a-box position="5 3.78 0" depth="1.2" width="2.4" height="0.05" material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.4"></a-box>
+    <a-box position="-5 3.78 2" depth="1.2" width="2.4" height="0.05" material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.4"></a-box>
+    <a-box position="0 3.78 0.5" depth="1.0" width="2.0" height="0.05" material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.3"></a-box>
+
+    <!-- Boundary Walls -->
+    <!-- Back Wall (Behind User / South) -->
+    <a-box position="0 1.9 6.5" width="22" height="3.8" depth="0.2" material="color: #1e293b"></a-box>
+
+    <!-- Front Wall (North) -->
+    <a-box position="0 1.9 -6.5" width="22" height="3.8" depth="0.2" material="color: #1e293b"></a-box>
+
+    <!-- West Wall (Behind Reception) -->
+    <a-box position="-10 1.9 0" width="0.2" height="3.8" depth="13" material="color: #1e293b"></a-box>
+
+    <!-- Partition Wall separating Reception from Interview Suite 3B -->
+    <a-box position="0 1.9 3" width="0.2" height="3.8" depth="7" material="src: #tex-acoustic; repeat: 4 2; roughness: 0.7"></a-box>
+    <a-box position="0 1.9 -4.5" width="0.2" height="3.8" depth="4" material="src: #tex-acoustic; repeat: 2 2; roughness: 0.7"></a-box>
+    <!-- Corridor Open Doorway at x: 0, z: -1 to 0 -->
+
+    <!-- Suite 3B Signage over Doorway -->
+    <a-plane position="0.12 2.8 -0.5" rotation="0 90 0" width="1.6" height="0.45" material="color: #0f172a">
+      <a-text value="INTERVIEW SUITE 3B" align="center" color="#38bdf8" width="3" position="0 0 0.01"></a-text>
+    </a-plane>
+
+    <!-- ==========================================
+         PANORAMIC CITY SKYLINE WINDOW (EAST WALL)
+         ========================================== -->
+    <!-- Window Frame -->
+    <a-box position="9.9 1.9 0" width="0.1" height="3.8" depth="13" material="color: #090d16"></a-box>
+    <!-- Skyline Panorama -->
+    <a-plane position="9.8 1.9 0" rotation="0 -90 0" width="12.6" height="3.4" material="src: #tex-skyline; roughness: 0.3"></a-plane>
+    <!-- Window mullions (vertical dividers) -->
+    <a-box position="9.75 1.9 -3" width="0.08" height="3.4" depth="0.08" material="color: #334155"></a-box>
+    <a-box position="9.75 1.9 0" width="0.08" height="3.4" depth="0.08" material="color: #334155"></a-box>
+    <a-box position="9.75 1.9 3" width="0.08" height="3.4" depth="0.08" material="color: #334155"></a-box>
+    <a-box position="9.75 1.8 0" width="0.08" height="0.08" depth="12.6" material="color: #334155"></a-box>
+
+    <!-- ==========================================
+         RECEPTION & LOBBY AREA (x: -8 to -2)
+         ========================================== -->
+    <!-- Reception Desk -->
+    <a-entity position="-5.5 0 2">
+      <!-- Desk Body -->
+      <a-box position="0 0.55 0" width="3.2" height="1.1" depth="1.0" material="src: #tex-wood; repeat: 2 1; roughness: 0.6"></a-box>
+      <!-- Desk Front Curved / Accent Plate -->
+      <a-box position="0 0.55 0.52" width="3.0" height="0.9" depth="0.08" material="color: #0f172a"></a-box>
+      <!-- Glowing Blue Underline -->
+      <a-box position="0 0.08 0.55" width="3.1" height="0.04" depth="0.05" material="color: #38bdf8; emissive: #38bdf8; emissiveIntensity: 0.8"></a-box>
+      <!-- Corporate Wall Sign Behind Desk -->
+      <a-plane position="0 2.2 -2.5" rotation="0 0 0" width="4.5" height="1.2" material="color: #0f172a">
+        <a-text value="APEX HORIZONS CAREER LAB" align="center" color="#ffffff" width="6" position="0 0.15 0.02"></a-text>
+        <a-text value="CONFIDENCE & INTERVIEW EXCELLENCE SIMULATOR" align="center" color="#38bdf8" width="3.5" position="0 -0.2 0.02"></a-text>
+      </a-plane>
+    </a-entity>
+
+    <!-- Lobby Lounge Sofas -->
+    <a-entity position="-5.5 0 5">
+      <!-- Sofa Base -->
+      <a-box position="0 0.25 0" width="2.6" height="0.4" depth="1.0" material="color: #1e293b; roughness: 0.8"></a-box>
+      <!-- Sofa Backrest -->
+      <a-box position="0 0.65 0.4" width="2.6" height="0.6" depth="0.25" material="color: #334155; roughness: 0.8"></a-box>
+      <!-- Sofa Armrests -->
+      <a-box position="-1.25 0.5 0" width="0.2" height="0.4" depth="1.0" material="color: #334155"></a-box>
+      <a-box position="1.25 0.5 0" width="0.2" height="0.4" depth="1.0" material="color: #334155"></a-box>
+      <!-- Coffee Table -->
+      <a-box position="0 0.25 -1.2" width="1.6" height="0.35" depth="0.8" material="src: #tex-wood; roughness: 0.4"></a-box>
+      <!-- Magazines / Brochure -->
+      <a-box position="-0.3 0.43 -1.2" width="0.3" height="0.02" depth="0.4" material="color: #38bdf8"></a-box>
+      <a-box position="0.3 0.43 -1.2" width="0.3" height="0.02" depth="0.4" material="color: #10b981"></a-box>
+    </a-entity>
+
+    <!-- Modern Decorative Plants (Lobby & Interview Room) -->
+    <!-- Plant 1: Lobby Plant -->
+    <a-entity position="-8.5 0 4.5">
+      <a-cylinder position="0 0.35 0" radius="0.35" height="0.7" material="color: #f8fafc; roughness: 0.5"></a-cylinder>
+      <a-sphere position="0 0.9 0" radius="0.5" material="color: #15803d; roughness: 0.9"></a-sphere>
+      <a-sphere position="0.15 1.25 0.1" radius="0.4" material="color: #16a34a; roughness: 0.9"></a-sphere>
+      <a-sphere position="-0.15 1.15 -0.1" radius="0.35" material="color: #22c55e; roughness: 0.9"></a-sphere>
+    </a-entity>
+
+    <!-- Plant 2: Interview Room Plant -->
+    <a-entity position="8.8 0 -4.5">
+      <a-cylinder position="0 0.4 0" radius="0.4" height="0.8" material="color: #0f172a; roughness: 0.4"></a-cylinder>
+      <a-sphere position="0 1.05 0" radius="0.6" material="color: #15803d; roughness: 0.9"></a-sphere>
+      <a-sphere position="-0.1 1.45 0.1" radius="0.48" material="color: #16a34a; roughness: 0.9"></a-sphere>
+      <a-sphere position="0.1 1.35 -0.1" radius="0.4" material="color: #22c55e; roughness: 0.9"></a-sphere>
+    </a-entity>
+
+    <!-- ==========================================
+         INTERVIEW ROOM SUITE 3B (x: 2 to 9)
+         ========================================== -->
+
+    <!-- Digital Real-Time Clock on Wall -->
+    <a-plane
+      digital-clock
+      position="5.5 2.8 -6.38"
+      rotation="0 0 0"
+      width="2.2"
+      height="0.85"
+      material="color: #0f172a">
+    </a-plane>
+
+    <!-- Whiteboard with STAR Framework (North Wall) -->
+    <a-plane
+      position="2.2 2.0 -6.38"
+      rotation="0 0 0"
+      width="3.4"
+      height="1.7"
+      material="src: #tex-whiteboard; roughness: 0.4">
+    </a-plane>
+
+    <!-- Executive Interview Conference Desk -->
+    <a-entity position="3.5 0 0">
+      <!-- Desk Walnut Top Surface -->
+      <a-box position="0 0.72 0" width="1.6" height="0.06" depth="2.8" material="src: #tex-wood; repeat: 1 2; roughness: 0.5"></a-box>
+      <!-- Desk Legs / Sturdy Metal Frame -->
+      <a-box position="-0.65 0.35 -1.25" width="0.1" height="0.7" depth="0.1" material="color: #0f172a"></a-box>
+      <a-box position="0.65 0.35 -1.25" width="0.1" height="0.7" depth="0.1" material="color: #0f172a"></a-box>
+      <a-box position="-0.65 0.35 1.25" width="0.1" height="0.7" depth="0.1" material="color: #0f172a"></a-box>
+      <a-box position="0.65 0.35 1.25" width="0.1" height="0.7" depth="0.1" material="color: #0f172a"></a-box>
+      <!-- Privacy Panel underneath -->
+      <a-box position="0 0.38 0" width="0.05" height="0.5" depth="2.4" material="color: #1e293b"></a-box>
+
+      <!-- Desk Accessories: Interviewer Laptop -->
+      <a-box position="-0.2 0.76 0" width="0.45" height="0.02" depth="0.35" material="color: #64748b; metalness: 0.8"></a-box>
+      <!-- Laptop Screen (open at 105 degrees) -->
+      <a-entity position="-0.38 0.76 0" rotation="0 0 15">
+        <a-box position="0 0.16 0" width="0.02" height="0.32" depth="0.35" material="color: #334155"></a-box>
+        <a-plane position="0.015 0.16 0" rotation="0 90 0" width="0.33" height="0.29" material="color: #38bdf8; emissive: #38bdf8; emissiveIntensity: 0.3"></a-plane>
+      </a-entity>
+
+      <!-- Glass of Water with realistic transparency -->
+      <a-cylinder position="0.3 0.82 0.7" radius="0.06" height="0.16" material="color: #93c5fd; opacity: 0.45; transparent: true; roughness: 0.1"></a-cylinder>
+      <!-- Notepad & Executive Stylus Pen -->
+      <a-box position="-0.15 0.76 0.7" width="0.3" height="0.015" depth="0.4" material="color: #f8fafc"></a-box>
+      <a-cylinder position="-0.02 0.77 0.7" radius="0.006" height="0.22" rotation="0 15 90" material="color: #0f172a"></a-cylinder>
+
+      <!-- Candidate Notepad & Pen on User's side of the desk -->
+      <a-box position="0.4 0.76 -0.5" width="0.32" height="0.015" depth="0.42" material="color: #f1f5f9"></a-box>
+      <a-cylinder position="0.5 0.77 -0.5" radius="0.006" height="0.22" rotation="0 -10 90" material="color: #2563eb"></a-cylinder>
+    </a-entity>
+
+    <!-- Candidate Chair (Where User Sits, facing West at Interviewer) -->
+    <a-entity position="5.3 0 0" rotation="0 -90 0">
+      <!-- Chair Base & Wheels -->
+      <a-cylinder position="0 0.15 0" radius="0.35" height="0.05" material="color: #0f172a"></a-cylinder>
+      <a-cylinder position="0 0.3 0" radius="0.04" height="0.25" material="color: #334155"></a-cylinder>
+      <!-- Cushion Seat -->
+      <a-box position="0 0.45 0" width="0.6" height="0.1" depth="0.55" material="color: #1e293b; roughness: 0.8"></a-box>
+      <!-- Ergonomic Mesh Backrest -->
+      <a-box position="0 0.85 -0.25" width="0.55" height="0.75" depth="0.08" material="color: #0f172a; roughness: 0.7"></a-box>
+    </a-entity>
+
+    <!-- Interviewer Ergonomic Executive Chair -->
+    <a-entity position="1.7 0 0" rotation="0 90 0">
+      <a-cylinder position="0 0.15 0" radius="0.38" height="0.05" material="color: #0f172a"></a-cylinder>
+      <a-cylinder position="0 0.3 0" radius="0.04" height="0.25" material="color: #334155"></a-cylinder>
+      <a-box position="0 0.45 0" width="0.65" height="0.1" depth="0.6" material="color: #0f172a; roughness: 0.7"></a-box>
+      <a-box position="0 0.95 -0.28" width="0.6" height="0.9" depth="0.09" material="color: #1e293b; roughness: 0.7"></a-box>
+    </a-entity>
+
+    <!-- ==========================================
+         VIRTUAL INTERVIEWER 3D AVATAR
+         (Positioned across the desk at x: 1.8, y: 0, z: 0)
+         Includes procedural breathing, blinking, head micro-movements,
+         mouth speaking animation, and note-taking arm motion
+         ========================================== -->
+    <a-entity id="interviewer-root" position="1.8 0 0" rotation="0 90 0" interviewer-avatar>
+      <!-- Seated Legs -->
+      <a-box position="-0.15 0.35 0.2" width="0.16" height="0.16" depth="0.5" material="color: #0f172a"></a-box>
+      <a-box position="0.15 0.35 0.2" width="0.16" height="0.16" depth="0.5" material="color: #0f172a"></a-box>
+
+      <!-- Torso with Navy Corporate Blazer & White Collared Shirt -->
+      <a-entity id="interviewer-torso" position="0 0.55 0">
+        <!-- Blazer Body -->
+        <a-box width="0.5" height="0.55" depth="0.32" material="color: #1e3a8a; roughness: 0.7"></a-box>
+        <!-- White Dress Shirt Inset -->
+        <a-box position="0 0.12 0.16" width="0.16" height="0.3" depth="0.02" material="color: #ffffff"></a-box>
+        <!-- Executive Silk Tie -->
+        <a-box position="0 0.05 0.175" width="0.06" height="0.32" depth="0.015" material="color: #0284c7"></a-box>
+      </a-entity>
+
+      <!-- Arms resting naturally on the desk -->
+      <!-- Left Arm -->
+      <a-entity position="-0.32 0.65 0.15" rotation="20 0 15">
+        <a-cylinder position="0 -0.15 0.1" radius="0.06" height="0.32" material="color: #1e3a8a"></a-cylinder>
+        <a-sphere position="0 -0.32 0.2" radius="0.06" material="color: #e2b997"></a-sphere>
+      </a-entity>
+      <!-- Right Arm (Active Note Taking Arm) -->
+      <a-entity id="interviewer-right-arm" position="0.32 0.65 0.15" rotation="25 0 -15">
+        <a-cylinder position="0 -0.15 0.1" radius="0.06" height="0.32" material="color: #1e3a8a"></a-cylinder>
+        <!-- Hand holding pen -->
+        <a-sphere position="0 -0.32 0.22" radius="0.06" material="color: #e2b997"></a-sphere>
+        <a-cylinder position="0 -0.32 0.25" radius="0.008" height="0.16" rotation="45 0 0" material="color: #38bdf8"></a-cylinder>
+      </a-entity>
+
+      <!-- Head & Facial Features Entity -->
+      <a-entity id="interviewer-head" position="0 1.12 0">
+        <!-- Neck -->
+        <a-cylinder position="0 -0.18 0" radius="0.08" height="0.14" material="color: #e2b997"></a-cylinder>
+        <!-- Head Sphere -->
+        <a-sphere radius="0.19" material="color: #e2b997; roughness: 0.8"></a-sphere>
+
+        <!-- Styled Professional Hair -->
+        <a-sphere position="0 0.07 -0.04" radius="0.2" material="color: #1c1917; roughness: 0.9"></a-sphere>
+        <a-box position="0 0.16 0.05" width="0.32" height="0.1" depth="0.22" material="color: #1c1917"></a-box>
+
+        <!-- Eyes -->
+        <a-sphere id="interviewer-eye-left" position="-0.07 0.02 0.16" radius="0.025" material="color: #ffffff">
+          <a-sphere position="0 0 0.018" radius="0.013" material="color: #0f172a"></a-sphere>
+        </a-sphere>
+        <a-sphere id="interviewer-eye-right" position="0.07 0.02 0.16" radius="0.025" material="color: #ffffff">
+          <a-sphere position="0 0 0.018" radius="0.013" material="color: #0f172a"></a-sphere>
+        </a-sphere>
+
+        <!-- Eyebrows -->
+        <a-box position="-0.07 0.06 0.17" width="0.065" height="0.012" depth="0.02" rotation="0 0 -5" material="color: #1c1917"></a-box>
+        <a-box position="0.07 0.06 0.17" width="0.065" height="0.012" depth="0.02" rotation="0 0 5" material="color: #1c1917"></a-box>
+
+        <!-- Sleek Modern Eyeglasses -->
+        <a-torus position="-0.07 0.02 0.18" radius="0.042" radius-tubular="0.004" material="color: #0284c7"></a-torus>
+        <a-torus position="0.07 0.02 0.18" radius="0.042" radius-tubular="0.004" material="color: #0284c7"></a-torus>
+        <a-cylinder position="0 0.025 0.18" radius="0.003" height="0.06" rotation="0 0 90" material="color: #0284c7"></a-cylinder>
+
+        <!-- Nose -->
+        <a-cone position="0 -0.015 0.19" radius-bottom="0.025" radius-top="0.008" height="0.05" rotation="-20 0 0" material="color: #d4a37f"></a-cone>
+
+        <!-- Procedural Mouth (Scales and moves vertically during speech) -->
+        <a-cylinder id="interviewer-mouth" position="0 -0.06 0.175" radius="0.03" height="0.012" rotation="0 0 90" material="color: #b91c1c"></a-cylinder>
+      </a-entity>
+    </a-entity>
+
+    <!-- ==========================================
+         IN-VR 3D WORLD-SPACE INTERACTIVE PANELS
+         Floating conveniently at comfortable viewing distance from candidate chair
+         ========================================== -->
+    <a-entity id="vr-main-hud-entity" position="5.3 1.55 -1.75" rotation="5 15 0">
+      <!-- 3D HUD Canvas Display Board -->
+      <a-plane
+        id="vr-hud-plane"
+        vr-hud-display
+        width="2.6"
+        height="1.6"
+        material="shader: flat; transparent: true">
+      </a-plane>
+
+      <!-- 3D Laser-Clickable Interactive VR Buttons Bar (Positioned under the display plane) -->
+      <a-entity position="0 -0.95 0.05">
+        <!-- Button 1: Start / Answer Toggle -->
+        <a-plane
+          id="vr-btn-answer"
+          interactive-button="title: Speak Answer; action: toggleMic; baseColor: #2563eb; hoverColor: #3b82f6"
+          position="-0.9 0 0"
+          width="0.55"
+          height="0.22"
+          material="color: #2563eb">
+          <a-text value="SPEAK / MIC" align="center" color="#ffffff" width="1.6" position="0 0 0.02"></a-text>
+        </a-plane>
+
+        <!-- Button 2: Repeat Question -->
+        <a-plane
+          interactive-button="title: Repeat; action: repeat; baseColor: #1e293b; hoverColor: #334155"
+          position="-0.3 0 0"
+          width="0.55"
+          height="0.22"
+          material="color: #1e293b">
+          <a-text value="REPEAT Q" align="center" color="#f8fafc" width="1.6" position="0 0 0.02"></a-text>
+        </a-plane>
+
+        <!-- Button 3: Next Question -->
+        <a-plane
+          interactive-button="title: Next; action: next; baseColor: #059669; hoverColor: #10b981"
+          position="0.3 0 0"
+          width="0.55"
+          height="0.22"
+          material="color: #059669">
+          <a-text value="NEXT Q ->" align="center" color="#ffffff" width="1.6" position="0 0 0.02"></a-text>
+        </a-plane>
+
+        <!-- Button 4: Review Summary -->
+        <a-plane
+          interactive-button="title: Summary; action: summary; baseColor: #475569; hoverColor: #64748b"
+          position="0.9 0 0"
+          width="0.55"
+          height="0.22"
+          material="color: #475569">
+          <a-text value="FINISH & SCORE" align="center" color="#f8fafc" width="1.5" position="0 0 0.02"></a-text>
+        </a-plane>
+      </a-entity>
+    </a-entity>
+
+    <!-- In-VR Welcome Kiosk in the Lobby (for users entering at reception) -->
+    <a-entity position="-5.5 1.5 -0.5" rotation="0 0 0">
+      <a-plane width="2.4" height="1.4" material="color: #0f172a; opacity: 0.92">
+        <a-text value="WELCOME TO VR INTERVIEW PREP" align="center" color="#38bdf8" width="3.2" position="0 0.45 0.02"></a-text>
+        <a-text value="Build confidence through low-stress, realistic practice.\nExplore the office, perform the calming box-breathing exercise,\nor walk straight into Suite 3B to begin." align="center" color="#e2e8f0" width="2.3" position="0 0.1 0.02"></a-text>
+
+        <!-- Kiosk Interactive Button: Start Interview -->
+        <a-plane
+          interactive-button="title: Start Practice; action: startSession; baseColor: #2563eb; hoverColor: #3b82f6"
+          position="-0.6 -0.4 0.04"
+          width="1.0"
+          height="0.28"
+          material="color: #2563eb">
+          <a-text value="GO TO INTERVIEW" align="center" color="#ffffff" width="2.0" position="0 0 0.02"></a-text>
+        </a-plane>
+
+        <!-- Kiosk Interactive Button: Box Breathing -->
+        <a-plane
+          interactive-button="title: Box Breathing; action: openBreathing; baseColor: #059669; hoverColor: #10b981"
+          position="0.6 -0.4 0.04"
+          width="1.0"
+          height="0.28"
+          material="color: #059669">
+          <a-text value="BOX BREATHING" align="center" color="#ffffff" width="2.0" position="0 0 0.02"></a-text>
+        </a-plane>
+      </a-plane>
+    </a-entity>
+
+    <!-- ==========================================
+         TELEPORTATION HOTSPOTS / NAVIGATION PADS
+         Comfort-focused locomotion for Meta Quest 3S
+         ========================================== -->
+    <!-- Pad 1: Candidate Interview Chair -->
+    <a-entity
+      teleport-pad="targetPosition: 5.5 0 0; locationName: Interview Candidate Chair"
+      position="5.5 0.02 0">
+      <a-cylinder class="pad-ring" radius="0.55" height="0.02" material="color: #0ea5e9; opacity: 0.85; emissive: #0ea5e9; emissiveIntensity: 0.4"></a-cylinder>
+      <a-ring rotation="-90 0 0" radius-inner="0.6" radius-outer="0.65" material="color: #38bdf8"></a-ring>
+      <a-text value="CANDIDATE SEAT" align="center" rotation="-90 0 90" position="0 0.04 0" width="1.8" color="#ffffff"></a-text>
+    </a-entity>
+
+    <!-- Pad 2: Reception Welcome Desk -->
+    <a-entity
+      teleport-pad="targetPosition: -5.5 0 0.5; locationName: Reception Desk"
+      position="-5.5 0.02 0.5">
+      <a-cylinder class="pad-ring" radius="0.55" height="0.02" material="color: #6366f1; opacity: 0.8; emissive: #6366f1; emissiveIntensity: 0.3"></a-cylinder>
+      <a-ring rotation="-90 0 0" radius-inner="0.6" radius-outer="0.65" material="color: #818cf8"></a-ring>
+      <a-text value="RECEPTION" align="center" rotation="-90 0 0" position="0 0.04 0" width="1.8" color="#ffffff"></a-text>
+    </a-entity>
+
+    <!-- Pad 3: Lounge Waiting Area -->
+    <a-entity
+      teleport-pad="targetPosition: -5.5 0 3.8; locationName: Lounge Waiting Area"
+      position="-5.5 0.02 3.8">
+      <a-cylinder class="pad-ring" radius="0.55" height="0.02" material="color: #10b981; opacity: 0.8; emissive: #10b981; emissiveIntensity: 0.3"></a-cylinder>
+      <a-ring rotation="-90 0 0" radius-inner="0.6" radius-outer="0.65" material="color: #34d399"></a-ring>
+      <a-text value="LOUNGE" align="center" rotation="-90 0 0" position="0 0.04 0" width="1.8" color="#ffffff"></a-text>
+    </a-entity>
+
+    <!-- Pad 4: Corridor Walkway -->
+    <a-entity
+      teleport-pad="targetPosition: 0 0 0; locationName: Suite 3B Entrance Corridor"
+      position="0 0.02 0">
+      <a-cylinder class="pad-ring" radius="0.5" height="0.02" material="color: #f59e0b; opacity: 0.8"></a-cylinder>
+      <a-ring rotation="-90 0 0" radius-inner="0.55" radius-outer="0.6" material="color: #fbbf24"></a-ring>
+      <a-text value="CORRIDOR" align="center" rotation="-90 0 0" position="0 0.04 0" width="1.8" color="#ffffff"></a-text>
+    </a-entity>
+  </a-scene>
+
+  <!-- ==========================================
+       CORE APPLICATION JAVASCRIPT & STATE LOGIC
+       ========================================== -->
+  <script>
+    // Initialize Procedural Canvas Textures and Assign to Assets
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        document.getElementById('tex-wood').src = createWoodTexture();
+        document.getElementById('tex-acoustic').src = createAcousticWallTexture();
+        document.getElementById('tex-carpet').src = createCarpetTexture();
+        document.getElementById('tex-skyline').src = createSkylineTexture();
+        document.getElementById('tex-whiteboard').src = createWhiteboardTexture();
+      } catch (err) {
+        console.warn('Canvas texture initialization warning:', err);
+      }
+
+      initSpeechRecognition();
+    });
+
+    // ==========================================
+    // SPEECH SYNTHESIS & RECOGNITION (WEB SPEECH API)
+    // ==========================================
+    let synth = window.speechSynthesis;
+    let selectedVoice = null;
+
+    function loadVoices() {
+      if (!synth) return;
+      const voices = synth.getVoices();
+      // Select natural English voice if available
+      selectedVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('David') || v.name.includes('Daniel'))) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    }
+
+    if (synth) {
+      loadVoices();
+      if (synth.onvoiceschanged !== undefined) {
+        synth.onvoiceschanged = loadVoices;
+      }
+    }
+
+    function speakText(text, onComplete) {
+      if (!synth) {
+        if (onComplete) onComplete();
+        return;
+      }
+
+      synth.cancel(); // Stop any pending speech
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (selectedVoice) utterance.voice = selectedVoice;
+
+      // Adjust rate and pitch based on difficulty personality
+      if (InterviewState.difficulty === 'friendly') {
+        utterance.rate = 0.95;
+        utterance.pitch = 1.05;
+      } else if (InterviewState.difficulty === 'formal') {
+        utterance.rate = 0.92;
+        utterance.pitch = 0.95;
+      } else {
+        utterance.rate = 0.96;
+        utterance.pitch = 1.0;
+      }
+
+      const avatar = document.querySelector('[interviewer-avatar]');
+      const avatarComponent = avatar ? avatar.components['interviewer-avatar'] : null;
+
+      utterance.onstart = () => {
+        InterviewState.isSpeaking = true;
+        if (avatarComponent) avatarComponent.setSpeaking(true);
+      };
+
+      utterance.onend = () => {
+        InterviewState.isSpeaking = false;
+        if (avatarComponent) avatarComponent.setSpeaking(false);
+        if (onComplete) onComplete();
+      };
+
+      utterance.onerror = (e) => {
+        console.warn('SpeechSynthesis error:', e);
+        InterviewState.isSpeaking = false;
+        if (avatarComponent) avatarComponent.setSpeaking(false);
+        if (onComplete) onComplete();
+      };
+
+      synth.speak(utterance);
+    }
+
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn('Web Speech Recognition API is not supported in this browser. Desktop text fallback is active.');
+        updateMicHUD('Text Input Ready (Mic Unsupported)', false);
+        return;
+      }
+
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+          InterviewState.isListening = true;
+          updateMicHUD('Listening to Microphone...', true);
+          updateVRHUD();
+        };
+
+        recognition.onresult = (event) => {
+          let interimTranscript = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              InterviewState.currentTranscript += ' ' + transcript;
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          const combined = (InterviewState.currentTranscript + ' ' + interimTranscript).trim();
+          document.getElementById('hud-transcript-display').textContent = combined || 'Listening...';
+          updateVRHUD();
+        };
+
+        recognition.onerror = (event) => {
+          console.warn('SpeechRecognition error:', event.error);
+          if (event.error === 'not-allowed') {
+            updateMicHUD('Mic Blocked - Use Text Input', false);
+          } else {
+            updateMicHUD('Mic Ready', false);
+          }
+          InterviewState.isListening = false;
+          updateVRHUD();
+        };
+
+        recognition.onend = () => {
+          InterviewState.isListening = false;
+          updateMicHUD('Mic Ready', false);
+          updateVRHUD();
+        };
+
+        InterviewState.speechRecognition = recognition;
+      } catch (err) {
+        console.warn('Error setting up SpeechRecognition:', err);
+      }
+    }
+
+    function toggleMicrophone() {
+      audio.playClick();
+      const rec = InterviewState.speechRecognition;
+
+      if (!rec) {
+        showVRToast('Speech recognition not supported in this browser. Please use text input below.');
+        return;
+      }
+
+      if (InterviewState.isListening) {
+        rec.stop();
+        InterviewState.isListening = false;
+        updateMicHUD('Mic Standby', false);
+        showVRToast('Microphone paused');
+      } else {
+        try {
+          rec.start();
+          InterviewState.isListening = true;
+          updateMicHUD('Listening to Microphone...', true);
+          showVRToast('Microphone active — speak your answer');
+        } catch (e) {
+          console.warn('Recognition start exception:', e);
+        }
+      }
+      updateVRHUD();
+    }
+
+    function updateMicHUD(text, isListening) {
+      const micIndicator = document.getElementById('hud-mic-indicator');
+      const micLabel = document.getElementById('hud-mic-text');
+      const btnToggle = document.getElementById('mic-toggle-label');
+
+      if (micIndicator && micLabel) {
+        micLabel.textContent = text;
+        if (isListening) {
+          micIndicator.classList.add('listening');
+          if (btnToggle) btnToggle.textContent = 'Pause Mic';
+        } else {
+          micIndicator.classList.remove('listening');
+          if (btnToggle) btnToggle.textContent = 'Speak Answer';
+        }
+      }
+    }
+
+    // ==========================================
+    // INTERVIEW FLOW & CONTROLS
+    // ==========================================
+    function toggleInterviewSession() {
+      audio.playClick();
+      if (!InterviewState.isActive) {
+        startInterviewSession();
+      } else {
+        finishInterviewEarly();
+      }
+    }
+
+    function startInterviewSession() {
+      InterviewState.isActive = true;
+      InterviewState.currentIndex = 0;
+      InterviewState.startTime = Date.now();
+      InterviewState.responses = [];
+      InterviewState.currentTranscript = '';
+
+      document.getElementById('interview-btn-text').textContent = 'End Interview';
+      document.getElementById('interview-btn-icon').textContent = '⏹';
+
+      // Teleport camera automatically to Candidate Chair for optimal experience
+      teleportTo('interview');
+
+      askCurrentQuestion();
+      showVRToast('Interview started! Listen to your interviewer.');
+    }
+
+    function askCurrentQuestion() {
+      const qList = QUESTION_BANK[InterviewState.category] || QUESTION_BANK.general;
+      const qObj = qList[InterviewState.currentIndex];
+      if (!qObj) {
+        finishInterviewEarly();
+        return;
+      }
+
+      InterviewState.questionStartTime = Date.now();
+      InterviewState.currentTranscript = '';
+      document.getElementById('hud-transcript-display').innerHTML = '<em>Listening for your answer...</em>';
+      document.getElementById('desktop-text-answer').value = '';
+
+      // Set greeting intro based on personality
+      let fullSpeech = qObj.question;
+      if (InterviewState.currentIndex === 0) {
+        const intro = InterviewState.difficulty === 'friendly' ? qObj.friendlyIntro : (InterviewState.difficulty === 'formal' ? qObj.formalIntro : "Welcome to your interview.");
+        fullSpeech = `${intro} ${qObj.question}`;
+      }
+
+      document.getElementById('hud-question-display').textContent = fullSpeech;
+      document.getElementById('hud-q-category').textContent = `[${InterviewState.category.toUpperCase()} - Q${InterviewState.currentIndex + 1} of ${qList.length}]`;
+
+      updateVRHUD();
+
+      // Virtual interviewer speaks the question
+      speakText(fullSpeech, () => {
+        // Automatically start microphone if supported
+        if (InterviewState.speechRecognition && !InterviewState.isListening) {
+          try {
+            InterviewState.speechRecognition.start();
+          } catch(e) {}
+        }
+      });
+    }
+
+    function repeatCurrentQuestion() {
+      audio.playClick();
+      showVRToast('Repeating question...');
+      const qList = QUESTION_BANK[InterviewState.category] || QUESTION_BANK.general;
+      const qObj = qList[InterviewState.currentIndex];
+      if (qObj) {
+        speakText(qObj.question);
+      }
+    }
+
+    function nextQuestion() {
+      audio.playClick();
+
+      // Record answer metrics
+      recordCurrentAnswer();
+
+      // Interviewer nods affirmatively
+      const avatar = document.querySelector('[interviewer-avatar]');
+      if (avatar && avatar.components['interviewer-avatar']) {
+        avatar.components['interviewer-avatar'].triggerNod();
+      }
+
+      const qList = QUESTION_BANK[InterviewState.category] || QUESTION_BANK.general;
+      if (InterviewState.currentIndex < qList.length - 1) {
+        InterviewState.currentIndex++;
+        askCurrentQuestion();
+      } else {
+        finishInterviewEarly();
+      }
+    }
+
+    function recordCurrentAnswer() {
+      const qList = QUESTION_BANK[InterviewState.category] || QUESTION_BANK.general;
+      const qObj = qList[InterviewState.currentIndex];
+      const durationSec = Math.max(1, Math.round((Date.now() - (InterviewState.questionStartTime || Date.now())) / 1000));
+      const transcript = (InterviewState.currentTranscript || document.getElementById('desktop-text-answer').value || '').trim();
+      const words = transcript ? transcript.split(/\s+/).length : 0;
+      const wpm = Math.round((words / durationSec) * 60);
+
+      // Count filler words
+      let fillerCount = 0;
+      const lower = transcript.toLowerCase();
+      FILLER_WORDS.forEach(fw => {
+        const regex = new RegExp(`\\b${fw}\\b`, 'gi');
+        const matches = lower.match(regex);
+        if (matches) fillerCount += matches.length;
+      });
+
+      InterviewState.responses.push({
+        questionId: qObj ? qObj.id : '',
+        questionText: qObj ? qObj.question : '',
+        transcript: transcript,
+        words: words,
+        durationSec: durationSec,
+        wpm: wpm,
+        fillerCount: fillerCount
+      });
+    }
+
+    function submitTextAnswer() {
+      const input = document.getElementById('desktop-text-answer');
+      if (input && input.value.trim()) {
+        InterviewState.currentTranscript = input.value.trim();
+        document.getElementById('hud-transcript-display').textContent = InterviewState.currentTranscript;
+        updateVRHUD();
+        audio.playClick();
+        showVRToast('Answer captured!');
+      }
+    }
+
+    function handleTextAnswerKey(event) {
+      if (event.key === 'Enter') {
+        submitTextAnswer();
+      }
+    }
+
+    function finishInterviewEarly() {
+      if (InterviewState.isActive) {
+        recordCurrentAnswer();
+      }
+
+      InterviewState.isActive = false;
+      if (synth) synth.cancel();
+      if (InterviewState.speechRecognition && InterviewState.isListening) {
+        InterviewState.speechRecognition.stop();
+      }
+
+      document.getElementById('interview-btn-text').textContent = 'Start Interview';
+      document.getElementById('interview-btn-icon').textContent = '▶';
+
+      audio.playCalmTone();
+      generatePerformanceSummary();
+      openSummaryModal();
+      updateVRHUD();
+    }
+
+    // ==========================================
+    // PERFORMANCE REVIEW & SCORECARD ENGINE
+    // ==========================================
+    function generatePerformanceSummary() {
+      const responses = InterviewState.responses;
+      const totalAnswered = responses.filter(r => r.words > 3).length;
+      const qList = QUESTION_BANK[InterviewState.category] || QUESTION_BANK.general;
+      const totalQuestions = qList.length;
+
+      const totalDurationSec = Math.round((Date.now() - (InterviewState.startTime || Date.now())) / 1000);
+      const mins = Math.floor(totalDurationSec / 60);
+      const secs = totalDurationSec % 60;
+
+      let totalWords = 0;
+      let totalFillers = 0;
+      responses.forEach(r => {
+        totalWords += r.words;
+        totalFillers += r.fillerCount;
+      });
+
+      const avgWpm = totalDurationSec > 0 ? Math.round((totalWords / Math.max(1, totalDurationSec)) * 60) : 0;
+
+      document.getElementById('summary-completed-count').textContent = `${totalAnswered} / ${totalQuestions}`;
+      document.getElementById('summary-duration').textContent = `${mins}m ${secs}s`;
+      document.getElementById('summary-total-words').textContent = totalWords;
+      document.getElementById('summary-fillers').textContent = totalFillers;
+
+      // Pace evaluation
+      let paceLabel = `${avgWpm} WPM`;
+      if (avgWpm > 160) paceLabel += ' (Brisk)';
+      else if (avgWpm >= 110) paceLabel += ' (Optimal)';
+      else if (avgWpm > 0) paceLabel += ' (Deliberate)';
+      else paceLabel = 'N/A';
+      document.getElementById('summary-pace').textContent = paceLabel;
+
+      // STAR Structure evaluation
+      let hasSituation = responses.some(r => /situation|context|project|challenge/i.test(r.transcript));
+      let hasAction = responses.some(r => /action|decision|implemented|solved|built/i.test(r.transcript));
+      let hasResult = responses.some(r => /result|outcome|impact|learned|metric|percent/i.test(r.transcript));
+
+      let structureRating = 'Developing';
+      if (hasSituation && hasAction && hasResult) structureRating = 'Excellent STAR';
+      else if (hasAction || hasResult) structureRating = 'Good Structure';
+      document.getElementById('summary-structure').textContent = structureRating;
+
+      // Personalized constructive advice
+      const adviceList = document.getElementById('summary-advice-list');
+      adviceList.innerHTML = '';
+
+      const adviceItems = [];
+
+      if (totalAnswered >= 3) {
+        adviceItems.push("Outstanding commitment! You completed multiple structured interview responses in a realistic 3D VR environment.");
+      } else {
+        adviceItems.push("Great initial step. Repeated practice builds environmental familiarity and reduces instinctive nervousness.");
+      }
+
+      if (avgWpm >= 110 && avgWpm <= 155) {
+        adviceItems.push("Your conversational pace was well-metered (110–150 WPM), conveying calm clarity and poise.");
+      } else if (avgWpm > 155) {
+        adviceItems.push("You spoke with energetic speed. Remember to insert intentional 1-second pauses between key thoughts to allow interviewers to digest your points.");
+      } else if (totalWords > 10) {
+        adviceItems.push("Your pace was thoughtful and measured. Ensure you maintain momentum when describing your specific actions.");
+      }
+
+      if (totalFillers === 0 && totalWords > 20) {
+        adviceItems.push("Remarkable verbal clarity! Zero prominent filler words detected in your transcribed responses.");
+      } else if (totalFillers > 0) {
+        adviceItems.push(`Detected approximately ${totalFillers} filler transition word(s). When you need time to structure your thoughts, a silent breath is always more powerful than saying 'um' or 'like'.`);
+      }
+
+      adviceItems.push("Recommended next practice session: Try the 'Behavioral (STAR)' category to hone your storytelling of high-stakes challenges and team conflict resolution.");
+
+      adviceItems.forEach(text => {
+        const li = document.createElement('li');
+        li.className = 'feedback-advice-item';
+        li.textContent = text;
+        adviceList.appendChild(li);
+      });
+    }
+
+    // ==========================================
+    // BOX BREATHING GROUNDING MECHANISM
+    // ==========================================
+    let breathingInterval = null;
+    let breathingStep = 0; // 0: Inhale, 1: Hold, 2: Exhale, 3: Hold
+
+    function openBreathingModal() {
+      audio.playCalmTone();
+      document.getElementById('modal-breathing').classList.add('active');
+      startBreathingCycle();
+    }
+
+    function closeBreathingModal() {
+      document.getElementById('modal-breathing').classList.remove('active');
+      if (breathingInterval) clearInterval(breathingInterval);
+    }
+
+    function startBreathingCycle() {
+      if (breathingInterval) clearInterval(breathingInterval);
+
+      const bubble = document.getElementById('breathing-bubble');
+      const label = document.getElementById('breathing-label');
+      const steps = [
+        { name: 'INHALE (4s)', scale: '1.8', text: 'Inhale deeply through your nose, expanding your diaphragm.' },
+        { name: 'HOLD (4s)', scale: '1.8', text: 'Gently hold that breath. Notice the calmness in your chest.' },
+        { name: 'EXHALE (4s)', scale: '1.0', text: 'Exhale slowly through your mouth, releasing all tension.' },
+        { name: 'HOLD EMPTY (4s)', scale: '1.0', text: 'Rest empty. Your heart rate is gently steadying.' }
+      ];
+
+      breathingStep = 0;
+      let count = 4;
+
+      function updateStep() {
+        const cur = steps[breathingStep];
+        label.textContent = cur.name;
+        bubble.style.transform = `scale(${cur.scale})`;
+        document.getElementById('breathing-guidance').textContent = cur.text;
+        bubble.textContent = count;
+        audio.playBreathingChime();
+      }
+
+      updateStep();
+
+      breathingInterval = setInterval(() => {
+        count--;
+        if (count < 1) {
+          count = 4;
+          breathingStep = (breathingStep + 1) % 4;
+          updateStep();
+        } else {
+          bubble.textContent = count;
+        }
+      }, 1000);
+    }
+
+    function startInterviewFromBreathing() {
+      closeBreathingModal();
+      startInterviewSession();
+    }
+
+    // ==========================================
+    // SETTINGS & CONFIGURATION MODAL
+    // ==========================================
+    function openSettingsModal() {
+      audio.playClick();
+      document.getElementById('modal-settings').classList.add('active');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('modal-settings').classList.remove('active');
+      updateVRHUD();
+    }
+
+    function selectDifficulty(diff) {
+      audio.playClick();
+      InterviewState.difficulty = diff;
+      document.querySelectorAll('#modal-settings .config-grid:first-of-type .config-card').forEach(c => c.classList.remove('selected'));
+      document.getElementById(`card-diff-${diff}`).classList.add('selected');
+      document.getElementById('badge-difficulty').textContent = diff.toUpperCase();
+      showVRToast(`Difficulty set to ${diff.toUpperCase()}`);
+    }
+
+    function selectCategory(cat) {
+      audio.playClick();
+      InterviewState.category = cat;
+      document.querySelectorAll('#modal-settings .config-grid:last-of-type .config-card').forEach(c => c.classList.remove('selected'));
+      document.getElementById(`card-cat-${cat}`).classList.add('selected');
+      document.getElementById('hud-q-category').textContent = `[${cat.toUpperCase()}]`;
+      showVRToast(`Question category: ${cat.toUpperCase()}`);
+    }
+
+    function openSummaryModal() {
+      document.getElementById('modal-summary').classList.add('active');
+    }
+
+    function closeSummaryModal() {
+      document.getElementById('modal-summary').classList.remove('active');
+    }
+
+    function restartSession() {
+      closeSummaryModal();
+      startInterviewSession();
+    }
+
+    // ==========================================
+    // VR SEATED HEIGHT & TELEPORTATION CONTROLS
+    // ==========================================
+    function toggleSeatedHeight() {
+      audio.playClick();
+      const camera = document.getElementById('head-camera');
+      const label = document.getElementById('height-label');
+      const icon = document.getElementById('height-icon');
+
+      InterviewState.isSeated = !InterviewState.isSeated;
+
+      if (InterviewState.isSeated) {
+        camera.setAttribute('position', '0 1.15 0'); // Seated height on conference chair
+        label.textContent = 'Seated Mode (1.15m)';
+        icon.textContent = '🪑';
+        showVRToast('Seated height applied (1.15m)');
+      } else {
+        camera.setAttribute('position', '0 1.65 0'); // Standing height
+        label.textContent = 'Standing Mode (1.65m)';
+        icon.textContent = '🚶';
+        showVRToast('Standing height applied (1.65m)');
+      }
+    }
+
+    function teleportTo(locationKey) {
+      const rig = document.getElementById('rig');
+      if (!rig) return;
+
+      audio.playTeleport();
+
+      if (locationKey === 'interview') {
+        window.teleportRig({ x: 5.5, y: 0, z: 0 });
+        rig.setAttribute('rotation', '0 -90 0'); // Face interviewer across desk
+        InterviewState.currentCameraSpot = 'interview';
+        showVRToast('Teleported to Interview Chair');
+      } else if (locationKey === 'reception') {
+        window.teleportRig({ x: -5.5, y: 0, z: 0.5 });
+        rig.setAttribute('rotation', '0 0 0');
+        InterviewState.currentCameraSpot = 'reception';
+        showVRToast('Teleported to Reception Lobby');
+      } else if (locationKey === 'lounge') {
+        window.teleportRig({ x: -5.5, y: 0, z: 3.8 });
+        rig.setAttribute('rotation', '0 -180 0');
+        InterviewState.currentCameraSpot = 'lounge';
+        showVRToast('Teleported to Lounge Waiting Area');
+      }
+    }
+
+    window.teleportRig = function(targetPos) {
+      const rig = document.getElementById('rig');
+      if (!rig) return;
+      rig.setAttribute('position', `${targetPos.x} ${targetPos.y} ${targetPos.z}`);
+    };
+
+    // Global action dispatcher for In-VR laser clicks
+    window.handleVRAction = function(action) {
+      if (action === 'startSession') {
+        startInterviewSession();
+      } else if (action === 'openBreathing') {
+        openBreathingModal();
+      } else if (action === 'toggleMic') {
+        toggleMicrophone();
+      } else if (action === 'repeat') {
+        repeatCurrentQuestion();
+      } else if (action === 'next') {
+        nextQuestion();
+      } else if (action === 'summary') {
+        finishInterviewEarly();
+      }
+    };
+
+    function updateVRHUD() {
+      const hudPlane = document.getElementById('vr-hud-plane');
+      if (hudPlane && hudPlane.components['vr-hud-display']) {
+        hudPlane.components['vr-hud-display'].updateHUD();
+      }
+    }
+
+    function showVRToast(msg) {
+      const toast = document.getElementById('vr-toast');
+      const toastMsg = document.getElementById('toast-msg');
+      if (!toast || !toastMsg) return;
+
+      toastMsg.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3200);
+    }
+  </script>
+</body>
+</html>
